@@ -5,6 +5,7 @@ import { EventCard } from '@/components/EventCard'
 import { EventFilters, type FilterOptions } from '@/components/EventFilters'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { OrganizationSentimentAnalysis } from '@/components/OrganizationSentimentAnalysis'
 
 interface Event {
   id: string
@@ -15,8 +16,15 @@ interface Event {
   capacity: number
   duration: number
   registrations: any[]
+  reviews: {
+    id: string
+    rating: number
+    comment: string
+    createdAt: Date
+  }[]
   _count: {
     registrations: number
+    reviews: number
   }
 }
 
@@ -141,6 +149,11 @@ export default function OrganizationDashboardPage() {
           <h3 className="text-lg font-semibold mb-2">Upcoming Events</h3>
           <p className="text-3xl font-bold text-purple-600">{upcomingEvents.length}</p>
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+        <h2 className="text-xl font-semibold mb-4">Event Performance Analysis</h2>
+        <OrganizationSentimentAnalysis />
       </div>
 
       <EventFilters onFilterChange={handleFilterChange} />
