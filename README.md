@@ -1,9 +1,5 @@
 # CommUnity
 
-<p align="center">
-  <img src="[your-logo-path]" alt="CommUnity Logo" width="200"/>
-</p>
-
 ## TL;DR 🚨
 A community engagement platform powered by Next.js and GROQ AI that fosters meaningful connections and conversations.
 
