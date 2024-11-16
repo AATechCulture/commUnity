@@ -52,7 +52,7 @@ Fisk G13
 - Awantika Bastola - Product Developer [@reyyy81](https://github.com/reyyy81)
 - Dinesh Pandey - Full Stack Developer [@dineshpandeyy](https://github.com/dineshpandeyy)
 - Emmanuel Adeyemi - UX Designer [@AdeyemiEmmanuel](https://github.com/AdeyemiEmmanuel)
-- Folusho Adeyemi - Project Manager [@folusho-adeyemi](https://github.com/folusho-adeyem)
+- Folusho Adeyemi - Project Manager [@folusho-adeyemi](https://github.com/folusho-adeyemi)
 - Pratush Khanal - Frontend Developer [@Khanalpratyush](https://github.com/Khanalpratyush)
 
 ## 🌟 Overview
