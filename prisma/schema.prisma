@@ -1,0 +1,82 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  PARTICIPANT
+  ORGANIZATION
+}
+
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String        @unique
+  password      String
+  role          UserRole      @default(PARTICIPANT)
+  organization  Organization?  // For organization users
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  registrations Registration[] // For participant users
+  feedbacks     Feedback[]    // New relation
+}
+
+model Organization {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @unique @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  logo        String?   // URL to logo image
+  website     String?
+  events      Event[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Event {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  date          DateTime
+  location      String
+  capacity      Int
+  organizationId String        @db.ObjectId
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  registrations Registration[]
+  feedbacks     Feedback[]    // New relation
+  image         String?       // URL to event image
+  category      String?
+  price         Float?
+  status        String        @default("upcoming") // upcoming, ongoing, completed, cancelled
+  duration    Int      @default(0) // Duration in minutes
+}
+
+model Registration {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  eventId   String   @db.ObjectId
+  status    String   @default("pending") // pending, confirmed, cancelled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+}
+
+model Feedback {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId     String    @db.ObjectId
+  userId      String    @db.ObjectId
+  rating      Int       // 1-5 stars
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  event       Event     @relation(fields: [eventId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+} 
