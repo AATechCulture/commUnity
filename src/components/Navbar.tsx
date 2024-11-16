@@ -23,7 +23,7 @@ export default function Navbar() {
               href="/" 
               className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text"
             >
-              Events App
+              commUnity
             </Link>
           </div>
 
