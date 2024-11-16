@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ChatbotWrapper } from '@/components/ChatbotWrapper'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -30,14 +31,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full bg-gray-50 dark:bg-gray-900`}>
-        <AuthProvider>
-          <Navbar />
-          <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-            {children}
-          </main>
-          <Toaster position="bottom-right" />
-          <ChatbotWrapper />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Navbar />
+            <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+              {children}
+            </main>
+            <Toaster position="bottom-right" />
+            <ChatbotWrapper />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

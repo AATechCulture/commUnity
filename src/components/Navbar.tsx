@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { NotificationBell } from './NotificationBell'
+import { ThemeToggle } from './ThemeToggle'
 
 export default function Navbar() {
   const { data: session } = useSession()
@@ -44,6 +45,7 @@ export default function Navbar() {
                   Events
                 </Link>
                 <NotificationBell />
+                <ThemeToggle />
                 <button
                   onClick={handleSignOut}
                   className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -59,6 +61,7 @@ export default function Navbar() {
                 >
                   Login
                 </Link>
+                <ThemeToggle />
                 <Link 
                   href="/register"
                   className="bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-500 transition-colors"
@@ -106,6 +109,9 @@ export default function Navbar() {
                   Events
                 </Link>
                 <NotificationBell />
+                <div className="px-3 py-2">
+                  <ThemeToggle />
+                </div>
                 <button
                   onClick={handleSignOut}
                   className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
@@ -121,12 +127,18 @@ export default function Navbar() {
                 >
                   Login
                 </Link>
+                <div className="px-3 py-2">
+                  <ThemeToggle />
+                </div>
                 <Link 
                   href="/register"
                   className="block px-3 py-2 text-base font-medium text-purple-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
                   Sign Up
                 </Link>
+                <div className="px-3 py-2">
+                  <ThemeToggle />
+                </div>
               </>
             )}
           </div>
