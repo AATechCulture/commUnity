@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { EventCard } from "@/components/EventCard";
 import Link from "next/link";
 import { Metadata } from "next";
+import { AIEventSearch } from '@/components/AIEventSearch'
 
 export const metadata: Metadata = {
-  title: "Participant Dashboard | Events App",
+  title: "Participant Dashboard | commUnity",
   description: "View your registered events and discover new ones",
 };
 
@@ -151,14 +152,12 @@ export default async function ParticipantDashboardPage() {
 
   return (
     <div className="space-y-10">
-      {/* Welcome Section */}
+      {/* Welcome Section with Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h1 className="text-2xl font-bold gradient-text">
+        <h1 className="text-2xl font-bold gradient-text mb-4">
           Welcome back, {session.user.name}!
         </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-300">
-          Here are your upcoming events and recommendations
-        </p>
+        <AIEventSearch />
       </div>
 
       {/* Current Events */}

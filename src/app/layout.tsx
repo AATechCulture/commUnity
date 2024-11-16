@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ChatbotWrapper } from '@/components/ChatbotWrapper'
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -17,7 +18,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Events App",
+  title: "commUnity",
   description: "Register and manage your events",
 };
 
@@ -35,6 +36,7 @@ export default function RootLayout({
             {children}
           </main>
           <Toaster position="bottom-right" />
+          <ChatbotWrapper />
         </AuthProvider>
       </body>
     </html>
