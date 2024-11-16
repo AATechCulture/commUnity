@@ -1,105 +1,136 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
 import { Groq } from "groq-sdk"
+import { NextResponse } from "next/server"
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.GROQ_API_KEY
 })
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url)
-    const query = searchParams.get('q')
-
-    if (!query) {
-      return NextResponse.json(
-        { error: 'Search query is required' },
-        { status: 400 }
-      )
+    const session = await auth()
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Get all events with their details
+    const { searchParams } = new URL(request.url)
+    const query = searchParams.get("query")
+
+    if (!query) {
+      return new NextResponse("Query parameter is required", { status: 400 })
+    }
+
+    // Fetch user's interests and details
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        interests: true,
+        name: true,
+        registrations: {
+          include: {
+            event: true
+          }
+        }
+      }
+    })
+
+    // Fetch all events
     const events = await prisma.event.findMany({
-      include: {
-        organization: {
-          select: {
-            name: true,
-          },
+      where: {
+        date: {
+          gte: new Date(),
         },
+      },
+      include: {
+        organization: true,
         _count: {
           select: {
             registrations: true,
           },
         },
       },
+      orderBy: {
+        date: 'asc',
+      },
     })
 
-    // Convert events to a format suitable for AI analysis
     const eventsContext = events.map(event => ({
       id: event.id,
       title: event.title,
       description: event.description,
-      date: event.date,
+      date: event.date.toISOString(),
       location: event.location,
       category: event.category,
       organization: event.organization.name,
-      price: event.price || 0,
       registrations: event._count.registrations,
-      capacity: event.capacity,
     }))
 
-    // Create Groq completion to analyze the search query
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are a helpful event search assistant. Given a list of events and a natural language query, return the IDs of the most relevant events. Events: ${JSON.stringify(eventsContext)}`
+          content: `You are an AI search assistant. Analyze the events based on the user's query and return ALL events sorted by relevance.
+          
+Instructions:
+1. Return ALL events, even if they don't perfectly match the query
+2. Score each event based on:
+   - Relevance to search terms
+   - Date/time match if specified
+   - Location match if specified
+   - Category match if specified
+   - User interests: ${user?.interests?.join(", ") || "not specified"}
+
+3. Return a JSON object with an "events" array containing:
+   {
+     "events": [
+       {
+         "id": "event_id",
+         "score": 0.95,
+         "reason": "Brief explanation of relevance"
+       }
+     ]
+   }`
         },
         {
           role: "user",
-          content: `Find events matching this query: "${query}". Return only a JSON array of event IDs, ordered by relevance. Format: {"eventIds": ["id1", "id2", ...]}`
+          content: `Query: "${query}"\nEvents: ${JSON.stringify(eventsContext)}`
         }
       ],
       model: "mixtral-8x7b-32768",
       temperature: 0.5,
+      max_tokens: 1024,
+      response_format: { type: "json_object" }
     })
 
-    const response = JSON.parse(completion.choices[0].message.content)
-    const relevantEventIds = response.eventIds || []
+    try {
+      const aiResponse = JSON.parse(completion.choices[0]?.message?.content || '{"events": []}')
+      
+      // Combine AI recommendations with event data and include ALL events
+      const scoredEvents = events.map(event => {
+        const aiMatch = aiResponse.events.find((e: any) => e.id === event.id)
+        return {
+          ...event,
+          score: aiMatch?.score || 0,
+          reason: aiMatch?.reason || "No specific match for your search"
+        }
+      })
 
-    // Fetch the full details of matched events
-    const matchedEvents = await prisma.event.findMany({
-      where: {
-        id: {
-          in: relevantEventIds,
-        },
-      },
-      include: {
-        organization: {
-          select: {
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            registrations: true,
-          },
-        },
-      },
-    })
+      // Sort by score but include all events
+      const sortedEvents = scoredEvents.sort((a, b) => b.score - a.score)
 
-    // Sort events in the same order as the AI response
-    const sortedEvents = relevantEventIds.map(id => 
-      matchedEvents.find(event => event.id === id)
-    ).filter(Boolean)
-
-    return NextResponse.json(sortedEvents)
+      return NextResponse.json(sortedEvents)
+    } catch (error) {
+      console.error("Failed to parse AI response:", error)
+      // Return all events if AI scoring fails
+      return NextResponse.json(events.map(event => ({
+        ...event,
+        score: 0,
+        reason: "Search ranking unavailable"
+      })))
+    }
   } catch (error) {
-    console.error('AI search error:', error)
-    return NextResponse.json(
-      { error: 'Failed to search events' },
-      { status: 500 }
-    )
+    console.error("AI search error:", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
   }
 } 

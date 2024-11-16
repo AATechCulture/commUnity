@@ -63,46 +63,54 @@ export function AIChat() {
       timestamp: Date.now(),
     }
 
-    // Add user message to chat
     setMessages(prev => [...prev, userMessage])
     setMessage('')
     setIsLoading(true)
 
     try {
       const response = await fetch('/api/events/search/ai?' + new URLSearchParams({
-        q: message.trim()
+        query: message.trim()
       }))
       
       if (!response.ok) throw new Error('Failed to get response')
       
-      const events = await response.json()
+      const data = await response.json()
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: events.length > 0 
-          ? `I found ${events.length} events that might interest you:\n\n${events.map((event: any) => 
-              `• ${event.title} - ${new Date(event.date).toLocaleDateString()}\n`
-            ).join('')}`
-          : "I couldn't find any events matching your query. Try being more specific or changing your search terms.",
+        content: data.response,
         role: 'assistant',
         timestamp: Date.now(),
       }
 
-      // Preserve both user and bot messages
       setMessages(prev => [...prev, botMessage])
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: 'I apologize, but I encountered an error. Could you please try asking your question again?',
         role: 'assistant',
         timestamp: Date.now(),
       }
-      // Preserve both user and error messages
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const formatBotResponse = (events: any[]) => {
+    if (!events.length) {
+      return "I couldn't find any events matching your query. Try being more specific or changing your search terms."
+    }
+
+    const eventList = events.map(event => {
+      const date = new Date(event.date).toLocaleDateString()
+      const reason = event.reason ? `\nWhy: ${event.reason}` : ''
+      const location = event.location ? `\nLocation: ${event.location}` : ''
+      return `• ${event.title} (${date})${location}${reason}`
+    }).join('\n\n')
+
+    return `I found ${events.length} event${events.length === 1 ? '' : 's'} that might interest you:\n\n${eventList}`
   }
 
   const handleEndChat = () => {
@@ -144,14 +152,14 @@ export function AIChat() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleEndChat}
-                  className="p-1 hover:bg-purple-500 rounded"
-                  title="End Chat"
+                  className="p-1 hover:bg-purple-500 rounded transition-colors"
+                  title="Clear chat history"
                 >
                   <TrashIcon className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-purple-500 rounded"
+                  className="p-1 hover:bg-purple-500 rounded transition-colors"
                 >
                   <XMarkIcon className="h-5 w-5" />
                 </button>
@@ -168,11 +176,11 @@ export function AIChat() {
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
                       msg.role === 'user'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                        ? 'bg-purple-600 text-white ml-auto'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white mr-auto'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                     <span className="text-xs opacity-70 mt-1 block">
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </span>
@@ -201,7 +209,7 @@ export function AIChat() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Ask about events..."
-                  className="flex-1 rounded-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600 dark:text-white"
+                  className="flex-1 rounded-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600 dark:text-white text-sm"
                 />
                 <button
                   type="submit"

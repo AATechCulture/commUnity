@@ -12,6 +12,7 @@ interface SearchResult {
   description: string
   date: Date
   location: string
+  category: string
   capacity: number
   _count: {
     registrations: number
@@ -19,6 +20,8 @@ interface SearchResult {
   organization: {
     name: string
   }
+  score?: number
+  reason?: string
 }
 
 export function AIEventSearch() {
@@ -36,18 +39,24 @@ export function AIEventSearch() {
 
     setIsSearching(true)
     try {
-      const res = await fetch(`/api/events/search/ai?q=${encodeURIComponent(searchQuery)}`)
+      const res = await fetch(`/api/events/search/ai?query=${encodeURIComponent(searchQuery)}`)
       if (!res.ok) throw new Error('Search failed')
       const data = await res.json()
-      setResults(data)
+      
+      // Sort results by score if available
+      const sortedResults = data.sort((a: SearchResult, b: SearchResult) => 
+        (b.score || 0) - (a.score || 0)
+      )
+      
+      setResults(sortedResults)
     } catch (error) {
       console.error('Search error:', error)
+      setResults([])
     } finally {
       setIsSearching(false)
     }
   }
 
-  // Use debounced value for search
   useEffect(() => {
     searchEvents(debouncedQuery)
   }, [debouncedQuery])
@@ -70,21 +79,32 @@ export function AIEventSearch() {
         <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 max-h-[80vh] overflow-y-auto">
           {isSearching ? (
             <div className="p-4 text-center text-gray-500">
-              Searching...
+              <div className="flex justify-center space-x-2">
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+              </div>
+              <p className="mt-2">Searching events...</p>
             </div>
           ) : results.length > 0 ? (
-            <div className="p-4 grid gap-4">
+            <div className="p-4 space-y-4">
               {results.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  showRegisterButton={false}
-                />
+                <div key={event.id} className="space-y-2">
+                  <EventCard
+                    event={event}
+                    showRegisterButton={true}
+                  />
+                  {event.reason && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 italic pl-4 border-l-2 border-purple-600">
+                      {event.reason}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
             <div className="p-4 text-center text-gray-500">
-              No events found
+              No events found matching your search
             </div>
           )}
         </div>
