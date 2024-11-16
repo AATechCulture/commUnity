@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { MicrophoneIcon } from '@heroicons/react/24/solid'
 import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/useDebounce'
 import { EventCard } from './EventCard'
@@ -26,12 +27,59 @@ interface SearchResult {
 }
 
 export function AIEventSearch() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
   const router = useRouter()
   const debouncedQuery = useDebounce(query, 500)
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = false
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = language === 'es' ? 'es-ES' : 'en-US'
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('')
+
+        setQuery(transcript)
+      }
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false)
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [language])
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      console.error(t('search.voiceNotSupported'))
+      return
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop()
+    } else {
+      setQuery('') // Clear previous query
+      recognitionRef.current.start()
+      setIsListening(true)
+    }
+  }
 
   const searchEvents = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -65,15 +113,28 @@ export function AIEventSearch() {
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
-      <div className="relative">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('search.placeholder')}
-          className="w-full px-4 py-2 pl-10 pr-4 text-gray-900 dark:text-white placeholder-gray-500 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-        />
-        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+      <div className="relative flex items-center gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('search.placeholder')}
+            className="w-full px-4 py-2 pl-10 pr-4 text-gray-900 dark:text-white placeholder-gray-500 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+          />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        </div>
+        <button
+          onClick={toggleListening}
+          className={`p-2 rounded-full transition-colors duration-300 ${
+            isListening 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          }`}
+          title={isListening ? t('search.stopListening') : t('search.startListening')}
+        >
+          <MicrophoneIcon className={`h-5 w-5 ${isListening ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`} />
+        </button>
       </div>
 
       {query.trim() && (

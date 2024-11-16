@@ -32,7 +32,12 @@ export const en = {
     stopListening: 'Stop voice input',
     speak: 'Read message aloud',
     stopSpeaking: 'Stop reading',
-    voiceNotSupported: 'Voice input is not supported in your browser'
+    voiceNotSupported: 'Voice input is not supported in your browser',
+    foundEvents: "Based on your interest in '{query}', I found {count} relevant events:",
+    noEventsFound: "I couldn't find any events at the moment. Please try again later or check the events page for updates.",
+    noRelevantEvents: "I couldn't find any events matching your specific interests. You might want to try broadening your search or check our events page for all available events.",
+    moreEvents: "\nThere are {count} more events that might interest you.",
+    viewAllEvents: "You can view all events and more details at /events",
   },
   events: {
     register: 'Register',

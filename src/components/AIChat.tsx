@@ -8,12 +8,30 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from './LanguageProvider'
 import { MicrophoneIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid'
+import { useRouter } from 'next/navigation'
 
 interface Message {
   id: string
   content: string
   role: 'user' | 'assistant'
   timestamp: number
+}
+
+interface SearchResult {
+  id: string
+  title: string
+  description: string
+  date: Date
+  location: string
+  category: string
+  organization: {
+    name: string
+  }
+  _count: {
+    registrations: number
+  }
+  score?: number
+  reason?: string
 }
 
 export function AIChat() {
@@ -125,6 +143,64 @@ export function AIChat() {
     setIsSpeaking(false)
   }
 
+  // Add function to check if message is about events
+  const isEventQuery = (text: string): boolean => {
+    const eventKeywords = [
+      'event', 'events', 'happening', 'activities', 'activity',
+      'evento', 'eventos', 'actividad', 'actividades',
+      'what\'s on', 'what is on', 'what\'s happening',
+      'show me', 'find', 'search', 'looking for', 'can i attend',
+      'interested in', 'want to', 'would like to', 'available'
+    ]
+    return eventKeywords.some(keyword => 
+      text.toLowerCase().includes(keyword.toLowerCase())
+    )
+  }
+
+  const searchEvents = async (query: string): Promise<SearchResult[]> => {
+    try {
+      const response = await fetch(`/api/events/search/ai?query=${encodeURIComponent(query)}`)
+      if (!response.ok) throw new Error('Search failed')
+      const events = await response.json()
+      return events
+    } catch (error) {
+      console.error('Event search error:', error)
+      return []
+    }
+  }
+
+  const formatEventResponse = (events: SearchResult[], query: string) => {
+    if (events.length === 0) {
+      return t('chat.noEventsFound')
+    }
+
+    const relevantEvents = events.filter(event => event.score && event.score > 0.3)
+    if (relevantEvents.length === 0) {
+      return t('chat.noRelevantEvents')
+    }
+
+    let response = t('chat.foundEvents', { query, count: relevantEvents.length }) + '\n\n'
+    
+    relevantEvents.slice(0, 3).forEach((event, index) => {
+      const date = new Date(event.date).toLocaleDateString()
+      response += `${index + 1}. **${event.title}**\n`
+      response += `📅 ${date}\n`
+      response += `📍 ${event.location}\n`
+      response += `👥 ${event.organization.name}\n`
+      if (event.reason) {
+        response += `ℹ️ ${event.reason}\n`
+      }
+      response += '\n'
+    })
+
+    if (relevantEvents.length > 3) {
+      response += t('chat.moreEvents', { count: relevantEvents.length - 3 })
+    }
+
+    response += '\n' + t('chat.viewAllEvents')
+    return response
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim() || isLoading) return
@@ -141,35 +217,51 @@ export function AIChat() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage.content,
-          history: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
-        }),
-        credentials: 'include',
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to get response')
-      }
-      
-      const { message: botResponse } = await response.json()
-      
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: botResponse,
-        role: 'assistant',
-        timestamp: Date.now(),
-      }
+      if (isEventQuery(userMessage.content)) {
+        // Handle event-related queries
+        const events = await searchEvents(userMessage.content)
+        const botResponse = formatEventResponse(events, userMessage.content)
+        
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: botResponse,
+          role: 'assistant',
+          timestamp: Date.now(),
+        }
 
-      setMessages(prev => [...prev, botMessage])
+        setMessages(prev => [...prev, botMessage])
+      } else {
+        // Handle regular chat queries
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userMessage.content,
+            history: messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            }))
+          }),
+          credentials: 'include',
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to get response')
+        }
+        
+        const { message: botResponse } = await response.json()
+        
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: botResponse,
+          role: 'assistant',
+          timestamp: Date.now(),
+        }
+
+        setMessages(prev => [...prev, botMessage])
+      }
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage: Message = {
