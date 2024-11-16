@@ -5,15 +5,17 @@ import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { NotificationBell } from './NotificationBell'
-import { ThemeToggle } from './ThemeToggle'
+import { AccessibilityMenu } from './AccessibilityMenu'
+import { useLanguage } from './LanguageProvider'
 
 export default function Navbar() {
   const { data: session } = useSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { t } = useLanguage()
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/' });
-  };
+    await signOut({ callbackUrl: '/' })
+  }
 
   return (
     <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
@@ -24,7 +26,7 @@ export default function Navbar() {
               href="/" 
               className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text"
             >
-              commUnity
+              {t('nav.home')}
             </Link>
           </div>
 
@@ -36,21 +38,21 @@ export default function Navbar() {
                   href="/dashboard"
                   className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 <Link 
                   href="/events"
                   className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
-                  Events
+                  {t('nav.events')}
                 </Link>
                 <NotificationBell />
-                <ThemeToggle />
+                <AccessibilityMenu />
                 <button
                   onClick={handleSignOut}
                   className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 >
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
@@ -59,14 +61,14 @@ export default function Navbar() {
                   href="/login"
                   className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
-                  Login
+                  {t('nav.login')}
                 </Link>
-                <ThemeToggle />
+                <AccessibilityMenu />
                 <Link 
                   href="/register"
-                  className="bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-500 transition-colors"
+                  className="text-purple-600 hover:text-purple-500 transition-colors"
                 >
-                  Sign Up
+                  {t('nav.signup')}
                 </Link>
               </>
             )}
@@ -75,15 +77,13 @@ export default function Navbar() {
           {/* Mobile menu button */}
           <div className="sm:hidden">
             <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 dark:text-gray-200"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
             >
-              <span className="sr-only">Open main menu</span>
               {mobileMenuOpen ? (
-                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                <XMarkIcon className="h-6 w-6" />
               ) : (
-                <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+                <Bars3Icon className="h-6 w-6" />
               )}
             </button>
           </div>
@@ -100,23 +100,23 @@ export default function Navbar() {
                   href="/dashboard"
                   className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 <Link 
                   href="/events"
                   className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Events
+                  {t('nav.events')}
                 </Link>
                 <NotificationBell />
                 <div className="px-3 py-2">
-                  <ThemeToggle />
+                  <AccessibilityMenu />
                 </div>
                 <button
                   onClick={handleSignOut}
                   className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
@@ -125,20 +125,17 @@ export default function Navbar() {
                   href="/login"
                   className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Login
+                  {t('nav.login')}
                 </Link>
                 <div className="px-3 py-2">
-                  <ThemeToggle />
+                  <AccessibilityMenu />
                 </div>
                 <Link 
                   href="/register"
                   className="block px-3 py-2 text-base font-medium text-purple-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Sign Up
+                  {t('nav.signup')}
                 </Link>
-                <div className="px-3 py-2">
-                  <ThemeToggle />
-                </div>
               </>
             )}
           </div>

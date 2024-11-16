@@ -6,6 +6,8 @@ import { TrashIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useSession } from 'next-auth/react'
+import { useLanguage } from './LanguageProvider'
+import { MicrophoneIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid'
 
 interface Message {
   id: string
@@ -15,6 +17,7 @@ interface Message {
 }
 
 export function AIChat() {
+  const { t, language } = useLanguage()
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [message, setMessage] = useState('')
@@ -22,6 +25,10 @@ export function AIChat() {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasGreetedRef = useRef(false)
+  const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -31,26 +38,92 @@ export function AIChat() {
     scrollToBottom()
   }, [messages])
 
-  // Send welcome message when chat is opened
   useEffect(() => {
     if (isOpen && !hasGreetedRef.current && messages.length === 0) {
+      const userName = session?.user?.name || 'there'
       const welcomeMessage: Message = {
         id: Date.now().toString(),
-        content: `Hi ${session?.user?.name || 'there'}, I am Unity and I am here to help U find ways to connect with your commUnity! How can I assist you today?`,
+        content: t('chat.welcome').replace('{name}', userName),
         role: 'assistant',
         timestamp: Date.now(),
       }
       setMessages([welcomeMessage])
       hasGreetedRef.current = true
     }
-  }, [isOpen, session?.user?.name, setMessages, messages.length])
+  }, [isOpen, session?.user?.name, setMessages, messages.length, t])
 
-  // Reset greeting flag when chat is closed
+  // Initialize speech recognition
   useEffect(() => {
-    if (!isOpen) {
-      hasGreetedRef.current = false
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = false
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = language === 'es' ? 'es-ES' : 'en-US'
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('')
+
+        setMessage(transcript)
+      }
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false)
+        // Auto-submit if there's a message
+        if (message.trim()) {
+          handleSubmit(new Event('submit') as any)
+        }
+      }
     }
-  }, [isOpen])
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [language, message])
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      console.error(t('chat.voiceNotSupported'))
+      return
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop()
+    } else {
+      setMessage('') // Clear previous message
+      recognitionRef.current.start()
+      setIsListening(true)
+    }
+  }
+
+  const speakMessage = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      console.error(t('chat.voiceNotSupported'))
+      return
+    }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = language === 'es' ? 'es-ES' : 'en-US'
+    utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
+
+    speechSynthesisRef.current = utterance
+    setIsSpeaking(true)
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel()
+    setIsSpeaking(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,17 +141,30 @@ export function AIChat() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/events/search/ai?' + new URLSearchParams({
-        query: message.trim()
-      }))
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          history: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        }),
+        credentials: 'include',
+      })
       
-      if (!response.ok) throw new Error('Failed to get response')
+      if (!response.ok) {
+        throw new Error('Failed to get response')
+      }
       
-      const data = await response.json()
+      const { message: botResponse } = await response.json()
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response,
+        content: botResponse,
         role: 'assistant',
         timestamp: Date.now(),
       }
@@ -88,7 +174,7 @@ export function AIChat() {
       console.error('Chat error:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'I apologize, but I encountered an error. Could you please try asking your question again?',
+        content: t('chat.error'),
         role: 'assistant',
         timestamp: Date.now(),
       }
@@ -98,21 +184,6 @@ export function AIChat() {
     }
   }
 
-  const formatBotResponse = (events: any[]) => {
-    if (!events.length) {
-      return "I couldn't find any events matching your query. Try being more specific or changing your search terms."
-    }
-
-    const eventList = events.map(event => {
-      const date = new Date(event.date).toLocaleDateString()
-      const reason = event.reason ? `\nWhy: ${event.reason}` : ''
-      const location = event.location ? `\nLocation: ${event.location}` : ''
-      return `• ${event.title} (${date})${location}${reason}`
-    }).join('\n\n')
-
-    return `I found ${events.length} event${events.length === 1 ? '' : 's'} that might interest you:\n\n${eventList}`
-  }
-
   const handleEndChat = () => {
     setMessages([])
     setIsOpen(false)
@@ -120,7 +191,7 @@ export function AIChat() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
       <AnimatePresence>
         {!isOpen ? (
           <motion.button
@@ -148,18 +219,19 @@ export function AIChat() {
           >
             {/* Header */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-purple-600 text-white">
-              <h3 className="font-semibold">Unity</h3>
+              <h3 className="font-semibold">{t('chat.title')}</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleEndChat}
                   className="p-1 hover:bg-purple-500 rounded transition-colors"
-                  title="Clear chat history"
+                  title={t('chat.clearHistory')}
                 >
                   <TrashIcon className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-1 hover:bg-purple-500 rounded transition-colors"
+                  title={t('chat.close')}
                 >
                   <XMarkIcon className="h-5 w-5" />
                 </button>
@@ -180,7 +252,22 @@ export function AIChat() {
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white mr-auto'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                      {msg.role === 'assistant' && (
+                        <button
+                          onClick={() => isSpeaking ? stopSpeaking() : speakMessage(msg.content)}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+                          title={isSpeaking ? t('chat.stopSpeaking') : t('chat.speak')}
+                        >
+                          {isSpeaking ? (
+                            <SpeakerXMarkIcon className="h-4 w-4" />
+                          ) : (
+                            <SpeakerWaveIcon className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     <span className="text-xs opacity-70 mt-1 block">
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </span>
@@ -208,15 +295,27 @@ export function AIChat() {
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Ask about events..."
+                  placeholder={t('chat.placeholder')}
                   className="flex-1 rounded-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600 dark:text-white text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`p-2 rounded-full transition-colors duration-300 ${
+                    isListening 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                  title={isListening ? t('chat.stopListening') : t('chat.startListening')}
+                >
+                  <MicrophoneIcon className={`h-5 w-5 ${isListening ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`} />
+                </button>
                 <button
                   type="submit"
                   disabled={isLoading || !message.trim()}
                   className="px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
                 >
-                  Send
+                  {t('chat.send')}
                 </button>
               </div>
             </form>
