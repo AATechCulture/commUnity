@@ -14,7 +14,10 @@ interface Event {
   _count: {
     registrations: number
   }
-  registrations?: any[]
+  registrations?: {
+    status: string
+  }[]
+  isRegistered?: boolean
 }
 
 export default function EventsPage() {
@@ -26,7 +29,10 @@ export default function EventsPage() {
       const res = await fetch('/api/events')
       if (!res.ok) throw new Error('Failed to fetch events')
       const data = await res.json()
-      setEvents(data)
+      setEvents(data.map(event => ({
+        ...event,
+        isRegistered: event.registrations?.length > 0
+      })))
     } catch (error) {
       console.error('Error fetching events:', error)
     }
@@ -52,6 +58,7 @@ export default function EventsPage() {
               ...event,
               registrationCount: event._count?.registrations || 0
             }}
+            isRegistered={event.isRegistered}
             onRegistrationUpdate={handleRegistrationUpdate}
           />
         ))}

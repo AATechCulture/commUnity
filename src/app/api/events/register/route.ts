@@ -64,12 +64,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create registration
+    // Create registration with confirmed status instead of pending
     const registration = await prisma.registration.create({
       data: {
         userId: session.user.id,
         eventId,
-        status: "pending",
+        status: "confirmed",
       },
       include: {
         event: true,

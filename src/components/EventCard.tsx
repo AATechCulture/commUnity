@@ -32,12 +32,20 @@ export function EventCard({
   const registrationCount = event.registrationCount || event._count?.registrations || 0
   const isFull = registrationCount >= event.capacity
 
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700">
       <div className="p-6">
-        <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-          {event.title}
-        </h3>
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+            {event.title}
+          </h3>
+          {isRegistered && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+              Registered
+            </span>
+          )}
+        </div>
         <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
           {event.description}
         </p>

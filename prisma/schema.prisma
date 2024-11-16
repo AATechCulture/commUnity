@@ -18,11 +18,13 @@ model User {
   email         String        @unique
   password      String
   role          UserRole      @default(PARTICIPANT)
-  organization  Organization?  // For organization users
+  interests     String[]
+  organization  Organization?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  registrations Registration[] // For participant users
-  feedbacks     Feedback[]    // New relation
+  registrations Registration[]
+  feedbacks     Feedback[]
+  reviews       EventReview[]
 }
 
 model Organization {
@@ -56,6 +58,7 @@ model Event {
   price         Float?
   status        String        @default("upcoming") // upcoming, ongoing, completed, cancelled
   duration    Int      @default(0) // Duration in minutes
+  reviews       EventReview[]
 }
 
 model Registration {
@@ -79,4 +82,20 @@ model Feedback {
   updatedAt   DateTime  @updatedAt
   event       Event     @relation(fields: [eventId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
+}
+
+model EventReview {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
+  eventId String @db.ObjectId
+
+  @@unique([userId, eventId])
+  @@index([eventId])
 } 

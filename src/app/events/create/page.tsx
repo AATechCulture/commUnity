@@ -23,6 +23,7 @@ export default function CreateEventPage() {
       capacity: parseInt(formData.get('capacity') as string),
       price: parseFloat(formData.get('price') as string) || 0,
       category: formData.get('category') as string,
+      duration: parseInt(formData.get('duration') as string) || 0,
     }
 
     try {
@@ -102,6 +103,13 @@ export default function CreateEventPage() {
             label="Category"
             name="category"
             placeholder="e.g., Conference, Workshop, Meetup"
+          />
+          <Input
+            label="Duration (minutes)"
+            name="duration"
+            type="number"
+            min="0"
+            placeholder="Enter event duration in minutes (optional)"
           />
           <Button
             type="submit"

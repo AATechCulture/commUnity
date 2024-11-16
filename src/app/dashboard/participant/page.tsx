@@ -21,6 +21,22 @@ export default async function ParticipantDashboardPage() {
     redirect('/dashboard');
   }
 
+  // Fetch user data including interests
+  const user = await prisma.user.findUnique({
+    where: {
+      id: session.user.id
+    },
+    select: {
+      interests: true
+    }
+  });
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  const now = new Date();
+
   // Fetch user's registered events
   const userRegistrations = await prisma.registration.findMany({
     where: {
@@ -38,7 +54,25 @@ export default async function ParticipantDashboardPage() {
     },
   });
 
-  // Fetch recommended events (events user hasn't registered for)
+  // Categorize registered events
+  const categorizedEvents = {
+    currentEvents: userRegistrations.filter(reg => {
+      const eventDate = new Date(reg.event.date);
+      const eventEnd = new Date(eventDate.getTime() + (reg.event.duration * 60000));
+      return eventDate <= now && eventEnd >= now;
+    }),
+    upcomingEvents: userRegistrations.filter(reg => {
+      const eventDate = new Date(reg.event.date);
+      return eventDate > now;
+    }),
+    pastEvents: userRegistrations.filter(reg => {
+      const eventDate = new Date(reg.event.date);
+      const eventEnd = new Date(eventDate.getTime() + (reg.event.duration * 60000));
+      return eventEnd < now;
+    })
+  };
+
+  // Fetch recommended events
   const recommendedEvents = await prisma.event.findMany({
     where: {
       NOT: {
@@ -51,6 +85,16 @@ export default async function ParticipantDashboardPage() {
       date: {
         gte: new Date(),
       },
+      OR: [
+        {
+          category: {
+            in: user.interests,
+          },
+        },
+        {
+          category: null,
+        },
+      ],
     },
     include: {
       organization: true,
@@ -66,6 +110,45 @@ export default async function ParticipantDashboardPage() {
     take: 3,
   });
 
+  const renderEventSection = (title: string, events: typeof userRegistrations, showStatus = true) => (
+    <section>
+      <h2 className="text-xl font-semibold mb-4">{title}</h2>
+      {events.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.map((registration) => (
+            <div key={registration.id} className="h-full">
+              <EventCard
+                event={registration.event}
+                footer={
+                  <div className="mt-4 space-y-2">
+                    {showStatus && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Status: {registration.status}
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          By: {registration.event.organization.name}
+                        </span>
+                      </div>
+                    )}
+                    <Link
+                      href={`/events/${registration.event.id}`}
+                      className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-300"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                }
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 dark:text-gray-400">No events in this category</p>
+      )}
+    </section>
+  );
+
   return (
     <div className="space-y-10">
       {/* Welcome Section */}
@@ -78,50 +161,14 @@ export default async function ParticipantDashboardPage() {
         </p>
       </div>
 
-      {/* User's Registered Events */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Your Registered Events</h2>
-        {userRegistrations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userRegistrations.map((registration) => (
-              <div key={registration.id} className="h-full">
-                <EventCard
-                  event={registration.event}
-                  footer={
-                    <div className="mt-4 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Status: {registration.status}
-                        </span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          By: {registration.event.organization.name}
-                        </span>
-                      </div>
-                      <Link
-                        href={`/events/${registration.event.id}`}
-                        className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-300"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You haven't registered for any events yet.
-            </p>
-            <Link href="/events">
-              <button className="text-purple-600 hover:text-purple-500 font-medium">
-                Browse Events →
-              </button>
-            </Link>
-          </div>
-        )}
-      </section>
+      {/* Current Events */}
+      {renderEventSection("Current Events", categorizedEvents.currentEvents)}
+
+      {/* Upcoming Events */}
+      {renderEventSection("Upcoming Events", categorizedEvents.upcomingEvents)}
+
+      {/* Past Events */}
+      {renderEventSection("Past Events", categorizedEvents.pastEvents)}
 
       {/* Recommended Events */}
       <section>

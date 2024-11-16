@@ -11,7 +11,7 @@ const eventSchema = z.object({
   capacity: z.number().min(1, 'Capacity must be at least 1'),
   price: z.number().min(0, 'Price cannot be negative').optional(),
   category: z.string().optional(),
-  duration: z.number().min(0, 'Duration must be at least 0'),
+  duration: z.number().min(0, 'Duration must be at least 0').optional(),
 });
 
 export async function POST(req: Request) {
@@ -71,6 +71,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const session = await auth();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     const events = await prisma.event.findMany({
       where: {
@@ -82,7 +86,7 @@ export async function GET(req: Request) {
               { description: { contains: search, mode: 'insensitive' } },
             ],
           } : {},
-          { date: { gte: new Date() } },
+          { date: { gte: today } },
         ],
       },
       include: {
@@ -91,6 +95,14 @@ export async function GET(req: Request) {
             name: true,
           },
         },
+        registrations: session?.user ? {
+          where: {
+            userId: session.user.id
+          },
+          select: {
+            status: true
+          }
+        } : false,
         _count: {
           select: {
             registrations: true,
@@ -102,10 +114,7 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json(events.map(event => ({
-      ...event,
-      registrationCount: event._count.registrations
-    })));
+    return NextResponse.json(events);
   } catch (error) {
     console.error('Event fetch error:', error);
     return NextResponse.json(

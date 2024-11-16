@@ -13,6 +13,7 @@ interface Event {
   date: Date
   location: string
   capacity: number
+  duration: number
   registrations: any[]
   _count: {
     registrations: number
@@ -39,6 +40,28 @@ export default function OrganizationDashboardPage() {
     }
   }
 
+  // Helper function to categorize events
+  const categorizeEvents = (events: Event[]) => {
+    const now = new Date()
+    
+    return {
+      currentEvents: events.filter(event => {
+        const eventDate = new Date(event.date)
+        const eventEnd = new Date(eventDate.getTime() + (event.duration * 60000)) // Convert minutes to milliseconds
+        return eventDate <= now && eventEnd >= now
+      }),
+      upcomingEvents: events.filter(event => {
+        const eventDate = new Date(event.date)
+        return eventDate > now
+      }),
+      pastEvents: events.filter(event => {
+        const eventDate = new Date(event.date)
+        const eventEnd = new Date(eventDate.getTime() + (event.duration * 60000))
+        return eventEnd < now
+      })
+    }
+  }
+
   const handleFilterChange = (filters: FilterOptions) => {
     let filtered = [...events]
 
@@ -49,17 +72,6 @@ export default function OrganizationDashboardPage() {
         event.title.toLowerCase().includes(searchTerm) ||
         event.description.toLowerCase().includes(searchTerm)
       )
-    }
-
-    // Date range filter
-    if (filters.dateRange !== 'all') {
-      const now = new Date()
-      filtered = filtered.filter(event => {
-        const eventDate = new Date(event.date)
-        return filters.dateRange === 'upcoming' 
-          ? eventDate >= now 
-          : eventDate < now
-      })
     }
 
     // Sort
@@ -80,8 +92,32 @@ export default function OrganizationDashboardPage() {
     setFilteredEvents(filtered)
   }
 
-  const upcomingEvents = filteredEvents.filter(event => new Date(event.date) > new Date())
+  const { currentEvents, upcomingEvents, pastEvents } = categorizeEvents(filteredEvents)
   const totalRegistrations = filteredEvents.reduce((acc, event) => acc + event._count.registrations, 0)
+
+  const renderEventSection = (title: string, events: Event[]) => (
+    <section className="space-y-4">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {events.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.map((event) => (
+            <Link key={event.id} href={`/events/${event.id}/manage`}>
+              <EventCard
+                event={event}
+                footer={
+                  <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                    {event._count.registrations} registrations
+                  </div>
+                }
+              />
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 dark:text-gray-400">No events in this category</p>
+      )}
+    </section>
+  )
 
   return (
     <div className="space-y-6">
@@ -109,19 +145,10 @@ export default function OrganizationDashboardPage() {
 
       <EventFilters onFilterChange={handleFilterChange} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map((event) => (
-          <Link key={event.id} href={`/events/${event.id}/manage`}>
-            <EventCard
-              event={event}
-              footer={
-                <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                  {event._count.registrations} registrations
-                </div>
-              }
-            />
-          </Link>
-        ))}
+      <div className="space-y-10">
+        {renderEventSection("Current Events", currentEvents)}
+        {renderEventSection("Upcoming Events", upcomingEvents)}
+        {renderEventSection("Past Events", pastEvents)}
       </div>
     </div>
   )
