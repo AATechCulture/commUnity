@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { StarIcon } from '@heroicons/react/24/solid'
 import { NotificationBell } from './NotificationBell'
 import { AccessibilityMenu } from './AccessibilityMenu'
 import { useLanguage } from './LanguageProvider'
@@ -34,6 +35,13 @@ export default function Navbar() {
           <div className="hidden sm:flex sm:items-center sm:space-x-8">
             {session ? (
               <>
+                <div className="flex items-center px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-full">
+                  <StarIcon className="h-5 w-5 text-yellow-400 mr-2" />
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    100 Points
+                  </span>
+                </div>
+
                 <Link 
                   href="/dashboard"
                   className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
@@ -78,7 +86,7 @@ export default function Navbar() {
           <div className="sm:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
             >
               {mobileMenuOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -96,7 +104,14 @@ export default function Navbar() {
           <div className="space-y-1 px-4 pb-3 pt-2">
             {session ? (
               <>
-                <Link 
+                <div className="flex items-center px-3 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-md mb-2">
+                  <StarIcon className="h-5 w-5 text-yellow-400 mr-2" />
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    100 Points
+                  </span>
+                </div>
+
+                <Link
                   href="/dashboard"
                   className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
