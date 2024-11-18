@@ -185,17 +185,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## 🌟 Support
-
-If you found this project helpful, please give it a ⭐️!
-
-## 📞 Contact
-
-For any inquiries or support:
-- Email: support@community.com
-- Twitter: [@CommUnityApp](https://twitter.com/CommUnityApp)
-- Discord: [Join our community](https://discord.gg/community)
-
 ## 🙏 Acknowledgments
 
 - [Next.js](https://nextjs.org/) - The React Framework for Production
